@@ -1,0 +1,36 @@
+---
+- name: Install aws cost exporter
+  hosts: all
+  become: true
+  vars_files:
+    - vars.yaml
+    - vault.yaml
+  roles:
+    - thorian93.main.upgrade
+    - geerlingguy.pip
+    - geerlingguy.docker
+  tasks:
+  - name: Create a directory if it does not exist
+    ansible.builtin.file:
+      path: /opt/aws_cost_exporter
+      state: directory
+      mode: '0700'
+
+  - name: Copy file with owner and permissions
+    ansible.builtin.copy:
+      src: files/exporter_config.yaml
+      dest: /opt/aws_cost_exporter/
+      owner: root
+      group: root
+      mode: '755'
+
+  - name: Start container
+    community.docker.docker_container:
+      name: aws-cost-exporter
+      image: opensourceelectrolux/aws-cost-exporter:v1.0.5
+      restart_policy: always
+      env:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
+      volumes:
+      - /opt/aws_cost_exporter/exporter_config.yaml:/app/exporter_config.yaml
